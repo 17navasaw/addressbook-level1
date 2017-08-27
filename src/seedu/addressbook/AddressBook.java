@@ -64,6 +64,7 @@ public class AddressBook {
     private static final String MESSAGE_COMMAND_HELP_PARAMETERS = "\tParameters: %1$s";
     private static final String MESSAGE_COMMAND_HELP_EXAMPLE = "\tExample: %1$s";
     private static final String MESSAGE_DELETE_PERSON_SUCCESS = "Deleted Person: %1$s";
+    private static final String MESSAGE_DELETE_RANGE_SUCCESS = "Deleted People from ";
     private static final String MESSAGE_DISPLAY_PERSON_DATA = "%1$s  Phone Number: %2$s  Email: %3$s";
     private static final String MESSAGE_DISPLAY_LIST_ELEMENT_INDEX = "%1$d. ";
     private static final String MESSAGE_GOODBYE = "Exiting Address Book... Good bye!";
@@ -73,6 +74,7 @@ public class AddressBook {
                                                             + LS + "\tjava AddressBook"
                                                             + LS + "\tjava AddressBook [custom storage file path]";
     private static final String MESSAGE_INVALID_PERSON_DISPLAYED_INDEX = "The person index provided is invalid";
+    private static final String MESSAGE_INVALID_PERSON_DISPLAYED_INDICES = "The person indices provided are invalid";
     private static final String MESSAGE_INVALID_STORAGE_FILE_CONTENT = "Storage file has invalid content";
     private static final String MESSAGE_PERSON_NOT_IN_ADDRESSBOOK = "Person could not be found in address book";
     private static final String MESSAGE_ERROR_CREATING_STORAGE_FILE = "Error: unable to create file: %1$s";
@@ -531,13 +533,26 @@ public class AddressBook {
         if (!isDeleteRangeArgsValid(commandArgs)) {
             return getMessageForInvalidCommandInput(COMMAND_DELETE_RANGE, getUsageInfoForDeleteRange());
         }
-        final int targetVisibleIndex = extractTargetIndexFromDeletePersonArgs(commandArgs);
-        if (!isDisplayIndexValidForLastPersonListingView(targetVisibleIndex)) {
-            return MESSAGE_INVALID_PERSON_DISPLAYED_INDEX;
+        final ArrayList<Integer> targetVisibleIndices = extractTargetIndicesFromDeleteRangeArgs(commandArgs);
+        Integer startIndex = targetVisibleIndices.get(0);
+        Integer endIndex = targetVisibleIndices.get(1);
+        if ((!isDisplayIndexValidForLastPersonListingView(startIndex)) && (isDisplayIndexValidForLastPersonListingView(endIndex))) {
+            return MESSAGE_INVALID_PERSON_DISPLAYED_INDICES;
         }
-        final HashMap<PersonProperty, String> targetInModel = getPersonByLastVisibleIndex(targetVisibleIndex);
-        return deletePersonFromAddressBook(targetInModel) ? getMessageForSuccessfulDelete(targetInModel) // success
-                : MESSAGE_PERSON_NOT_IN_ADDRESSBOOK; // not found
+
+        for (int i=startIndex;i<=endIndex;i++) {
+            try {
+                final HashMap<PersonProperty, String> targetInModel = getPersonByLastVisibleIndex(i);
+                if (!deletePersonFromAddressBook(targetInModel))
+                    return MESSAGE_PERSON_NOT_IN_ADDRESSBOOK;
+            }
+            catch (IndexOutOfBoundsException e) {
+                return MESSAGE_INVALID_PERSON_DISPLAYED_INDICES;
+            }
+
+        }
+        return  getMessageForSuccessfulDeleteRange(targetVisibleIndices); // success
+
     }
 
     /**
@@ -597,6 +612,21 @@ public class AddressBook {
     }
 
     /**
+     * Extracts the target's indices from the raw delete person args string
+     *
+     * @param rawArgs raw command args string for the delete person command
+     * @return extracted index
+     */
+    private static ArrayList<Integer> extractTargetIndicesFromDeleteRangeArgs(String rawArgs) {
+        ArrayList<Integer> targetIndices = new ArrayList<>();
+        Scanner SCANNER_RANGE = new Scanner(rawArgs);
+
+        targetIndices.add(SCANNER_RANGE.nextInt()); // start index
+        targetIndices.add(SCANNER_RANGE.nextInt()); // end index
+        return targetIndices;
+    }
+
+    /**
      * Checks that the given index is within bounds and valid for the last shown person list view.
      *
      * @param index to check
@@ -615,6 +645,13 @@ public class AddressBook {
      */
     private static String getMessageForSuccessfulDelete(HashMap<PersonProperty, String> deletedPerson) {
         return String.format(MESSAGE_DELETE_PERSON_SUCCESS, getMessageForFormattedPersonData(deletedPerson));
+    }
+
+    /**
+     * Constructs a feedback message for a successful delete range command execution.
+     */
+    private static String getMessageForSuccessfulDeleteRange(ArrayList<Integer> targetIndices) {
+        return MESSAGE_DELETE_RANGE_SUCCESS + targetIndices.get(0) + " to " + targetIndices.get(1);
     }
 
     /**
