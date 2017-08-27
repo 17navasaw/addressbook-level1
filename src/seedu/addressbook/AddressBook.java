@@ -114,6 +114,13 @@ public class AddressBook {
     private static final String COMMAND_DELETE_PARAMETER = "INDEX";
     private static final String COMMAND_DELETE_EXAMPLE = COMMAND_DELETE_WORD + " 1";
 
+    private static final String COMMAND_DELETE_RANGE = "deleterange";
+    private static final String COMMAND_DELETE_RANGE_DESC = "Deletes people within the range of index numbers used in "
+            + "the last find/list call.";
+    private static final String COMMAND_DELETE_RANGE_PARAMETER = "[START_INDEX] [END_INDEX]";
+    private static final String COMMAND_DELETE_RANGE_EXAMPLE = COMMAND_DELETE_WORD + " 1" + " 3";
+
+
     private static final String COMMAND_CLEAR_WORD = "clear";
     private static final String COMMAND_CLEAR_DESC = "Clears address book permanently.";
     private static final String COMMAND_CLEAR_EXAMPLE = COMMAND_CLEAR_WORD;
@@ -377,6 +384,8 @@ public class AddressBook {
             return executeListAllPersonsInAddressBook();
         case COMMAND_DELETE_WORD:
             return executeDeletePerson(commandArgs);
+        case COMMAND_DELETE_RANGE:
+            return executeDeleteRange(commandArgs);
         case COMMAND_CLEAR_WORD:
             return executeClearAddressBook();
         case COMMAND_HELP_WORD:
@@ -513,6 +522,25 @@ public class AddressBook {
     }
 
     /**
+     * Deletes range of people identified using last displayed indices.
+     *
+     * @param commandArgs full command args string from the user
+     * @return feedback display message for the operation result
+     */
+    private static String executeDeleteRange(String commandArgs) {
+        if (!isDeleteRangeArgsValid(commandArgs)) {
+            return getMessageForInvalidCommandInput(COMMAND_DELETE_RANGE, getUsageInfoForDeleteRange());
+        }
+        final int targetVisibleIndex = extractTargetIndexFromDeletePersonArgs(commandArgs);
+        if (!isDisplayIndexValidForLastPersonListingView(targetVisibleIndex)) {
+            return MESSAGE_INVALID_PERSON_DISPLAYED_INDEX;
+        }
+        final HashMap<PersonProperty, String> targetInModel = getPersonByLastVisibleIndex(targetVisibleIndex);
+        return deletePersonFromAddressBook(targetInModel) ? getMessageForSuccessfulDelete(targetInModel) // success
+                : MESSAGE_PERSON_NOT_IN_ADDRESSBOOK; // not found
+    }
+
+    /**
      * Checks validity of delete person argument string's format.
      *
      * @param rawArgs raw command args string for the delete person command
@@ -522,6 +550,37 @@ public class AddressBook {
         try {
             final int extractedIndex = Integer.parseInt(rawArgs.trim()); // use standard libraries to parse
             return extractedIndex >= DISPLAYED_INDEX_OFFSET;
+        } catch (NumberFormatException nfe) {
+            return false;
+        }
+    }
+
+    /**
+     * Checks validity of delete range argument string's format.
+     *
+     * @param rawArgs raw command args string for the delete person command
+     * @return whether the input args string is valid
+     */
+    private static boolean isDeleteRangeArgsValid(String rawArgs) {
+        final Scanner SCANNER_RANGE = new Scanner(rawArgs);
+        String startIndexString=null, endIndexString=null;
+
+        // Check if rawArgs has 2 tokens
+        for (int i=0;i<2;i++) {
+            if (SCANNER_RANGE.hasNext()) {
+                if (i == 0)
+                    startIndexString = SCANNER_RANGE.next();
+                else if (i == 1)
+                    endIndexString = SCANNER_RANGE.next();
+            }
+            else
+                return false;
+        }
+
+        try {
+            final int extractedStartIndex = Integer.parseInt(startIndexString); // use standard libraries to parse
+            final int extractedEndIndex = Integer.parseInt(endIndexString);
+            return ((extractedEndIndex >= extractedStartIndex) && (extractedStartIndex >= DISPLAYED_INDEX_OFFSET) && (extractedEndIndex >= DISPLAYED_INDEX_OFFSET));
         } catch (NumberFormatException nfe) {
             return false;
         }
@@ -1086,6 +1145,7 @@ public class AddressBook {
                 + getUsageInfoForFindCommand() + LS
                 + getUsageInfoForViewCommand() + LS
                 + getUsageInfoForDeleteCommand() + LS
+                + getUsageInfoForDeleteRange() + LS
                 + getUsageInfoForClearCommand() + LS
                 + getUsageInfoForExitCommand() + LS
                 + getUsageInfoForHelpCommand();
@@ -1110,6 +1170,13 @@ public class AddressBook {
         return String.format(MESSAGE_COMMAND_HELP, COMMAND_DELETE_WORD, COMMAND_DELETE_DESC) + LS
                 + String.format(MESSAGE_COMMAND_HELP_PARAMETERS, COMMAND_DELETE_PARAMETER) + LS
                 + String.format(MESSAGE_COMMAND_HELP_EXAMPLE, COMMAND_DELETE_EXAMPLE) + LS;
+    }
+
+    /** Returns the string for showing 'delete range' command usage instruction */
+    private static String getUsageInfoForDeleteRange() {
+        return String.format(MESSAGE_COMMAND_HELP, COMMAND_DELETE_RANGE, COMMAND_DELETE_RANGE_DESC) + LS
+                + String.format(MESSAGE_COMMAND_HELP_PARAMETERS, COMMAND_DELETE_RANGE_PARAMETER) + LS
+                + String.format(MESSAGE_COMMAND_HELP_EXAMPLE, COMMAND_DELETE_RANGE_EXAMPLE) + LS;
     }
 
     /** Returns string for showing 'clear' command usage instruction */
