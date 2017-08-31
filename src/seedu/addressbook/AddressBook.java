@@ -536,14 +536,14 @@ public class AddressBook {
         final ArrayList<Integer> targetVisibleIndices = extractTargetIndicesFromDeleteRangeArgs(commandArgs);
         Integer startIndex = targetVisibleIndices.get(0);
         Integer endIndex = targetVisibleIndices.get(1);
-        if ((!isDisplayIndexValidForLastPersonListingView(startIndex)) && (isDisplayIndexValidForLastPersonListingView(endIndex))) {
+        if (!((isDisplayIndexValidForLastPersonListingView(startIndex)) && (isDisplayIndexValidForLastPersonListingView(endIndex)))) {
             return MESSAGE_INVALID_PERSON_DISPLAYED_INDICES;
         }
 
         for (int i=startIndex;i<=endIndex;i++) {
             try {
                 final HashMap<PersonProperty, String> targetInModel = getPersonByLastVisibleIndex(i);
-                if (!deletePersonFromAddressBook(targetInModel))
+                if (!deletePersonFromAddressBook(targetInModel)) // returns message regarding person who is unable to be deleted
                     return MESSAGE_PERSON_NOT_IN_ADDRESSBOOK;
             }
             catch (IndexOutOfBoundsException e) {
